@@ -29,7 +29,7 @@
   </parent>
   <artifactId>xwiki-platform-distribution-flavor-test-misc</artifactId>
   <name>XWiki Platform - Distribution - Flavor - Functional Tests - Misc.</name>
-  <packaging>pom</packaging>
+  <packaging>docker</packaging>
   <description>XWiki Platform - Distribution - Flavor - Functional Tests - Misc.</description>
   <dependencies>
     <dependency>
@@ -60,32 +60,100 @@
       <artifactId>commons-io</artifactId>
       <scope>test</scope>
     </dependency>
+    <!--dependency>
+      <groupId>org.xwiki.platform</groupId>
+      <artifactId>xwiki-platform-distribution-docker-tomcat-mysql</artifactId>
+      <scope>test</scope>
+      <type></type>
+    </dependency-->
   </dependencies>
   <build>
     <plugins>
-      <!-- Step 1: Compile the JUnit Tests and copy test resources files -->
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-      </plugin>
-      <!-- Step 2: Create jar containing integration tests which will be installed -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-      </plugin>
-      <!-- Step 3: Unpack the application -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-      </plugin>
-      <!-- Step 4: Start XWiki, Execute the tests and Stop XWiki -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
+        <groupId>io.fabric8</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+        <version>0.23.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <imagePullPolicy>IfNotPresent</imagePullPolicy>
+          <autoCreateCustomNetworks>true</autoCreateCustomNetworks>
+          <images>
+            <!-- Execute the MySQL image in a container -->
+            <image>
+              <alias>mysql-xwiki</alias>
+              <name>mysql:5.7</name>
+              <run>
+                <network>
+                  <mode>custom</mode>
+                  <name>xwiki-maven</name>
+                </network>
+                <volumes>
+                  <bind>
+                    <volume>${project.build.directory}/docker/mysql:/var/lib/mysql</volume>
+                  </bind>
+                </volumes>
+                <env>
+                  <MYSQL_ROOT_PASSWORD>xwiki</MYSQL_ROOT_PASSWORD>
+                  <MYSQL_USER>xwiki</MYSQL_USER>
+                  <MYSQL_PASSWORD>xwiki</MYSQL_PASSWORD>
+                  <MYSQL_DATABASE>xwiki</MYSQL_DATABASE>
+                </env>
+                <cmd>
+                  <arg>--character-set-server=utf8</arg>
+                  <arg>--collation-server=utf8_bin</arg>
+                  <arg>--explicit-defaults-for-timestamp=1</arg>
+                </cmd>
+                <log>
+                  <prefix>%n|</prefix>
+                  <date>default</date>
+                  <color>cyan</color>
+                </log>
+                <wait>
+                  <log>.*port: 3306  MySQL Community Server.*</log>
+                  <time>60000</time>
+                </wait>
+              </run>
+            </image>
+            <image>
+              <alias>xwiki</alias>
+              <name>xwiki:latest</name>
+              <run>
+                <dependsOn>
+                  <container>mysql-xwiki</container>
+                </dependsOn>
+                <network>
+                  <mode>custom</mode>
+                  <name>xwiki-maven</name>
+                </network>
+                <volumes>
+                  <bind>
+                    <volume>${project.build.directory}/docker/xwiki:/usr/local/xwiki</volume>
+                  </bind>
+                </volumes>
+                <env>
+                  <DB_USER>xwiki</DB_USER>
+                  <DB_PASSWORD>xwiki</DB_PASSWORD>
+                  <DB_DATABASE>xwiki</DB_DATABASE>
+                  <DB_HOST>0.0.0.0</DB_HOST>
+                </env>
+                <ports>
+                  <port>18080:8080</port>
+                </ports>
+                <wait>
+                  <http>
+                    <url>http://localhost:18080/xwiki</url>
+                  </http>
+                  <time>60000</time>
+                </wait>
+                <log>
+                  <prefix>%n|</prefix>
+                  <date>default</date>
+                  <color>red</color>
+                </log>
+              </run>
+            </image>
+          </images>
+        </configuration>
       </plugin>
     </plugins>
   </build>
