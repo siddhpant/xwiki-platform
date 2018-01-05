@@ -19,8 +19,7 @@
  */
 package org.xwiki.test.misc;
 
-import org.xwiki.test.integration.XWikiTestSetup;
-
+import junit.extensions.TestSetup;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -48,7 +47,7 @@ public class AllTests extends TestCase
         addTestCase(suite, PDFTest.class);
         addTestCase(suite, SuggestTest.class);
 
-        return new XWikiTestSetup(suite);
+        return new TestSetup(suite);
     }
 
     private static void addTestCase(TestSuite suite, Class< ? > testClass) throws Exception

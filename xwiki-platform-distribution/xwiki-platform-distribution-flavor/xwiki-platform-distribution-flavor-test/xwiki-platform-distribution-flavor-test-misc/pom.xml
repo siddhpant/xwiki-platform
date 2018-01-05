@@ -29,7 +29,7 @@
   </parent>
   <artifactId>xwiki-platform-distribution-flavor-test-misc</artifactId>
   <name>XWiki Platform - Distribution - Flavor - Functional Tests - Misc.</name>
-  <packaging>docker</packaging>
+  <packaging>pom</packaging>
   <description>XWiki Platform - Distribution - Flavor - Functional Tests - Misc.</description>
   <dependencies>
     <dependency>
@@ -67,8 +67,27 @@
       <type></type>
     </dependency-->
   </dependencies>
+  <properties>
+    <!--docker.container.mysql-xwiki.net.xwiki-maven.ip>192.168.0.1</docker.container.mysql-xwiki.net.xwiki-maven.ip-->
+    <!--docker.container.xwiki.net.xwiki-maven.ip>192.168.0.2</docker.container.xwiki.net.xwiki-maven.ip-->
+  </properties>
   <build>
     <plugins>
+      <!-- Compile the JUnit Tests and copy test resources files -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+      </plugin>
+      <!-- Create jar containing integration tests which will be installed -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+      <!-- Start and Stop the XWiki docker image -->
       <plugin>
         <groupId>io.fabric8</groupId>
         <artifactId>docker-maven-plugin</artifactId>
@@ -76,17 +95,19 @@
         <extensions>true</extensions>
         <configuration>
           <imagePullPolicy>IfNotPresent</imagePullPolicy>
-          <autoCreateCustomNetworks>true</autoCreateCustomNetworks>
+          <!--autoCreateCustomNetworks>true</autoCreateCustomNetworks-->
+          <showLogs>true</showLogs>
           <images>
             <!-- Execute the MySQL image in a container -->
             <image>
               <alias>mysql-xwiki</alias>
               <name>mysql:5.7</name>
               <run>
-                <network>
+                <!--network>
                   <mode>custom</mode>
                   <name>xwiki-maven</name>
-                </network>
+                </network-->
+                <!--hostname>mysql-xwiki</hostname-->
                 <volumes>
                   <bind>
                     <volume>${project.build.directory}/docker/mysql:/var/lib/mysql</volume>
@@ -118,13 +139,17 @@
               <alias>xwiki</alias>
               <name>xwiki:latest</name>
               <run>
-                <dependsOn>
+                <!--dependsOn>
                   <container>mysql-xwiki</container>
-                </dependsOn>
-                <network>
+                </dependsOn-->
+                <links>
+                  <link>mysql-xwiki</link>
+                </links>
+                <!--network>
                   <mode>custom</mode>
                   <name>xwiki-maven</name>
-                </network>
+                </network-->
+                <!--hostname>xwiki</hostname-->
                 <volumes>
                   <bind>
                     <volume>${project.build.directory}/docker/xwiki:/usr/local/xwiki</volume>
@@ -134,16 +159,17 @@
                   <DB_USER>xwiki</DB_USER>
                   <DB_PASSWORD>xwiki</DB_PASSWORD>
                   <DB_DATABASE>xwiki</DB_DATABASE>
-                  <DB_HOST>0.0.0.0</DB_HOST>
+                  <!--DB_HOST>192.168.0.1</DB_HOST-->
+                  <DB_HOST>mysql-xwiki</DB_HOST>
                 </env>
                 <ports>
-                  <port>18080:8080</port>
+                  <port>8080:8080</port>
                 </ports>
                 <wait>
                   <http>
-                    <url>http://localhost:18080/xwiki</url>
+                    <url>http://localhost:8080/</url>
                   </http>
-                  <time>60000</time>
+                  <time>70000</time>
                 </wait>
                 <log>
                   <prefix>%n|</prefix>
@@ -154,6 +180,28 @@
             </image>
           </images>
         </configuration>
+        <executions>
+          <execution>
+            <id>start</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <!--goal>build</goal-->
+              <goal>start</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>stop</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>stop</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Run the functional tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
       </plugin>
     </plugins>
   </build>
